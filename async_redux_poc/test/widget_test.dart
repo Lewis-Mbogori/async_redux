@@ -7,6 +7,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:async_redux_poc/models/user_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -50,9 +51,10 @@ void main() {
     await tester.pumpWidget(MyApp(store: store));
 
     store.dispatch(FetchUserRequestAction());
-    await tester.pump();
 
-    expect(store.state.isLoading, true);
+    expect(store.state.userFetchState, isA<Loading>());
+
+    await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     completer.complete(http.Response(
@@ -65,8 +67,59 @@ void main() {
 
     await tester.pumpAndSettle(); 
 
-    expect(store.state.isLoading, false);
-    expect(find.text('User: Shelby'), findsOneWidget);   
+    expect(store.state.userFetchState, isA<Loaded>());
+
+    final expectedUser = UserModel(id: 1, name: 'Shelby', email: 'shelby@gmail.com');
+
+    switch (store.state.userFetchState) {
+      case Loaded(user: final loadedUser):
+        expect(loadedUser, expectedUser);
+      default:
+      // If a bug ever causes the wrong variant to land here instead, fail witha clear message
+      fail('Expected Loaded state but got ${store.state.userFetchState}');
+    }
+    expect(find.text('User: Shelby'), findsOneWidget);
+
+    final state = store.state.userFetchState;
+    switch (state) {
+      case Loaded(user: final loadeduser):
+      expect(loadeduser.name, 'Shelby');
+      default:
+      fail('Expected Loaded state but got $state');
+    }
+
+       
+  });
+
+  testWidgets('Shows error message when the API call fails', (WidgetTester tester) async {
+    final completer = Completer<http.Response>();
+    final mockClient = MockClient((request) => completer.future);
+
+    final store = Store<AppState>(
+      userReducer,
+      initialState: AppState.initial(),
+      middleware: createUserMiddleware(client: mockClient),
+    );
+
+    await tester.pumpWidget(MyApp(store: store));
+
+    store.dispatch(FetchUserRequestAction());
+    await tester.pump();
+
+    // Now we resolve the fake response with a failure status this time
+    completer.complete(http.Response('Not Found', 404));
+    await tester.pumpAndSettle();
+
+    expect(store.state.userFetchState, isA<FetchError>());
+
+    switch (store.state.userFetchState) {
+      case FetchError(message: final message):
+        expect(message, contains('404'));
+      default:
+      fail('Expected FetchError state but got ${store.state.userFetchState}');
+    }
+
+    expect(find.textContaining('Error: '), findsOneWidget);
   });
 
 //   testWidgets('Shows loading spinner after dispatching FetchUserRequestAction', (WidgetTester tester) async {

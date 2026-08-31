@@ -13,24 +13,31 @@ class HomePage extends StatelessWidget {
       body: Center(
         child: StoreConnector<AppState, _ViewModel>(
           converter: (store) => _ViewModel(
-            isLoading: store.state.isLoading,
-            userName: store.state.user?.name,
-            error: store.state.errorMessage,
+            // isLoading: store.state.isLoading,
+            // userName: store.state.user?.name,
+            // error: store.state.errorMessage,
+            state: store.state.userFetchState,
             onFetchUser: () => store.dispatch(FetchUserRequestAction()),
           ),
           builder: (context, vm) {
-            if (vm.isLoading) {
-              return CircularProgressIndicator();
-            } else if (vm.error != null) {
-              return Text('Error: ${vm.error}');
-            } else if (vm.userName != null) {
-              return Text('User: ${vm.userName}');
-            } else {
-              return ElevatedButton(
-                onPressed: vm.onFetchUser,
-                child: Text('Fetch User'),
-              );
-            }
+            return switch (vm.state) {
+              Idle() => ElevatedButton(onPressed: vm.onFetchUser, child: Text('Fetch User'),),
+              Loading() => CircularProgressIndicator(),
+              Loaded(user: final user) => Text('User: ${user.name}'),
+              FetchError(message: final message) => Text('Error: $message'),
+            };
+            // if (vm.isLoading) {
+            //   return CircularProgressIndicator();
+            // } else if (vm.error != null) {
+            //   return Text('Error: ${vm.error}');
+            // } else if (vm.userName != null) {
+            //   return Text('User: ${vm.userName}');
+            // } else {
+            //   return ElevatedButton(
+            //     onPressed: vm.onFetchUser,
+            //     child: Text('Fetch User'),
+            //   );
+            // }
           },
         )
       ),
@@ -39,15 +46,11 @@ class HomePage extends StatelessWidget {
 }
 
 class _ViewModel {
-  final bool isLoading;
-  final String? userName;
-  final String? error;
+  final UserFetchState state;
   final VoidCallback onFetchUser;
 
   _ViewModel({
-    required this.isLoading,
-    required this.userName,
-    required this.error,
+    required this.state,
     required this.onFetchUser,
   });
 }

@@ -16,5 +16,18 @@ class UserModel {
       name: json['name'],
       email: json['email'],
     );
+
   }
+
+  @override
+  bool operator ==(Object other) =>
+       other is UserModel &&
+       other.id == id &&
+       other.name == name &&
+       other.email == email;
+
+
+  @override
+  // Dart requires hashcode to be overriden whenever == is overriden. Objects that are == to each other must return same hashcode
+  int get hashCode => Object.hash(id, name, email);
 }
